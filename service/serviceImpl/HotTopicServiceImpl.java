@@ -20,9 +20,9 @@ import cn.edu.bjtu.weibo.dao.*;
 @Service
 public class HotTopicServiceImpl implements HotTopicService {
         @Autowired
-	TopicDAO topicDao;
+	private TopicDAO topicDao;
         @Autowired
-	WeiboDAO weiboDao;
+	private WeiboDAO weiboDao;
 
 	@Override
 	public List<Topic> HotTopic(int pageIndex, int numberPerPage) {
