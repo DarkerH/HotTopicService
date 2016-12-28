@@ -1,4 +1,4 @@
-package cn.edu.bjtu.weibo.impl;
+﻿package cn.edu.bjtu.weibo.impl;
 
 import java.util.Date;
 import java.text.DateFormat;
@@ -118,9 +118,11 @@ public class HotTopicServiceImpl implements HotTopicService,Comparator{
 						&& j <= pageIndex * numberPerPage - 1){          //根据传进来的分页参数，将排序好的话题Id分页
 					String content = topicDao.getContent(array[j]);
 					String date = topicDao.getTimeofTopic(array[j]);
+					String owner = topicDao.getOwnerTopic(array[j]);
 					Topic topic = new Topic();
 					topic.setTopic(content);
-					topic.setDate(date);                            //根据话题Id创建话题
+					topic.setDate(date); 
+                                        topic.setOwner(owner);					//根据话题Id创建话题
 					newTopicList.add(topic);                        //将创建好的话题添加到话题列表中      
 				}
 			}
