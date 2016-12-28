@@ -4,6 +4,7 @@ import java.util.Date;
 import java.text.DateFormat;
 import java.text.ParsePosition;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Comparator;
@@ -12,59 +13,93 @@ import java.util.LinkedHashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.RecursiveAction;
+import java.util.concurrent.TimeUnit;
 
 import cn.edu.bjtu.weibo.model.Topic;
 import cn.edu.bjtu.weibo.service.*;
 import cn.edu.bjtu.weibo.dao.*;
 
 @Service
-public class HotTopicServiceImpl implements HotTopicService {
-        @Autowired
-	private TopicDAO topicDao;
-        @Autowired
-	private WeiboDAO weiboDao;
+public class HotTopicServiceImpl implements HotTopicService,Comparator{
 
+
+    @Autowired
+    private TopicDAO topicDao;
+    @Autowired
+    private WeiboDAO weiboDao;
+    
+    private static String[] array;
+    
+    public static int length = 0;
+    
+   // public static Map<String, Double> topicMap = new HashMap<String, Double>();
 	@Override
 	public List<Topic> HotTopic(int pageIndex, int numberPerPage) {
 		// TODO Auto-generated method stub
 		
 
-		List<String> topicIdList = topicDao.getAllTopic(); // »ñÈ¡ËùÓĞµÄTopicid,·µ»ØÁĞ±í
-
-		Map<String, Double> topicMap = new HashMap<String, Double>();
-
+		List<String> topicIdList = topicDao.getAllTopic();             //è°ƒç”¨topicDaoä¸­çš„æ¥å£è·å–æ‰€æœ‰è¯é¢˜å¾—åˆ°è¯é¢˜åˆ—è¡¨
+		
+		array = new String[topicIdList.size()];           //å®šä¹‰å­˜å‚¨è¯é¢˜Idçš„Stringç±»å‹æ•°ç»„
+		//array = new String[1000000];
+		
+		List<Topic> newTopicList = null;                 //å®šä¹‰å­˜å‚¨æ’åºåçš„æ–°è¯é¢˜åˆ—è¡¨
+		
 		for (int i = 0; i < topicIdList.size(); i++) {
-			String topicId = topicIdList.get(i); // Ñ­»·È¡³ötopicId
+			String topicId = topicIdList.get(i); 
 
-			if (DateTest(topicDao.getTimeofTopic(topicId)) == true) {         //µ÷ÓÃ×Ô¼º¶¨ÒåµÄDateTest·½·¨£¬É¸Ñ¡½üÆßÌìµÄ»°Ìâ
+			if (DateTest(topicDao.getTimeofTopic(topicId)) == true) {     //æ ¹æ®è‡ªå·±ç¼–å†™çš„æ—¥æœŸåˆ¤æ–­æ–¹æ³•ï¼Œè¯»å–ç³»ç»Ÿæ—¶é—´ï¼Œåˆ¤æ–­è¯¥è¯é¢˜æ˜¯å¦æ˜¯è¿‘ä¸€å‘¨çš„è¯é¢˜      
+				
+				array[i] = topicId;        //åˆ¤æ–­æ˜¯è¿‘ä¸€å‘¨çš„è¯é¢˜ï¼Œå°†è¯é¢˜Idå­˜å…¥arrayæ•°ç»„ä¸­
+				
+				length++;
 
-				List<String> weiboIdList = topicDao.getAllWeibo(topicId); // ¸ù¾İtopicId²éÑ¯°üº¬´Ë»°ÌâµÄËùÓĞÎ¢²©
+				/*List<String> weiboIdList = topicDao.getAllWeibo(topicId); 
 
 				double hot = 0.0;
 
 				for (int j = 0; j < weiboIdList.size(); j++) {
-					String weiboId = weiboIdList.get(j);             //¸ù¾İTopicId²éÑ¯¶ÔÓ¦µÄweiboid
-					String commentNumber = weiboDao.getCommentNumber(weiboId);    //µ÷ÓÃweiboDao²éÑ¯¸ÃÌõÎ¢²©µÄÆÀÂÛÊı
-					String forwordNumber = weiboDao.getForwardNumber(weiboId);    //µ÷ÓÃweiboDao²éÑ¯¸ÃÌõÎ¢²©µÄ×ª·¢Êı
-					String likeNumber = weiboDao.getLikeNumber(weiboId);          //µ÷ÓÃweiboDao²éÑ¯¸ÃÌõÎ¢²©µÄµãÔŞÊı
+					String weiboId = weiboIdList.get(j);             
+					String commentNumber = weiboDao.getCommentNumber(weiboId);   
+					String forwordNumber = weiboDao.getForwardNumber(weiboId);    
+					String likeNumber = weiboDao.getLikeNumber(weiboId);          
 
 					hot = hot + 0.2 * Float.parseFloat(likeNumber) + 0.4
 							* Float.parseFloat(forwordNumber) + 0.4
-							* Float.parseFloat(commentNumber);            //¸ù¾İÈı¸ö±äÁ¿ÉèÖÃÈ¨ÖØ×Ô¶¨Òå»°ÌâÈÈ¶È£¬½«Ò»Ìõ»°ÌâµÄ¶ÔÓ¦µÄÎ¢²©µÄÈÈ¶È½øĞĞÀÛ¼Ó£¬¼´ÊÇ´ËÌõ»°ÌâµÄÈÈ¶È
-				}
-				topicMap.put(topicId, hot);     //½«topicidºÍ¶ÔÓ¦µÄÈÈ¶ÈÒÔ¼üÖµ¶ÔµÄĞÎÊ½´æÈëMapÖĞ
+							* Float.parseFloat(commentNumber);            
+				}*/
+				//topicMap.put(topicId, hot);     
 			}
 
 		}
 
-		List<Topic> topicList = null;
+		/*List<String> newTopicIdList = null;
+		
+		 Random rand = new Random();
+			for(int i = 0;i<1000000;i++){
+				array[i] = "topicId_"+String.valueOf(i);
+				topicMap.put("topicId_"+String.valueOf(i), rand.nextDouble()%100+rand.nextInt()%10);
+			}*/
+			
+			forkJoinSort();               //æ ¹æ®è‡ªå·±ç¼–å†™çš„å¤šçº¿ç¨‹æ’åºç®—æ³•è¿›è¡Œè¯é¢˜æ’åº
+			
+			//int j = 0;
+			/*for(int j = 0;j<1000000;j++){
+				
+				
+				System.out.println(array[j]+"   "+topicMap.get(array[j]));
+				
+			}*/
 
 
-		topicMap = sortByValue(topicMap);          //µ÷ÓÃ×Ô¼º¶¨ÒåµÄÅÅĞòËã·¨£¬°´ÕÕMapµÄvalue½µĞòÅÅÁĞtopicMap
+		//topicMap = sortByValue(topicMap);          
 
-		int k = 1;
+	/*	int k = 1;
 
-		for (String key : topicMap.keySet()) {    //¸ù¾İ´«ÈëµÄpageIndexºÍnumberPerPage²ÎÊı£¬½«½á¹û·ÖÒ³
+		for (String key : topicMap.keySet()) {    
 
 			if (k >= ((pageIndex - 1) * numberPerPage) + 1
 					&& k <= pageIndex * numberPerPage) {
@@ -73,16 +108,29 @@ public class HotTopicServiceImpl implements HotTopicService {
 				Topic topic = new Topic();
 				topic.setTopic(content);
 				topic.setDate(date);
-				topicList.add(topic);              //¸ù¾İtopicid´´½¨ĞÂµÄTopic¶ÔÏó´æÈëTopicList
+				topicList.add(topic);             
 			}
 			k++;
-		}
+		}*/
+			
+			for(int j = 0; j<array.length ; j++){
+				if(j >= ((pageIndex - 1) * numberPerPage)
+						&& j <= pageIndex * numberPerPage - 1){          //æ ¹æ®ä¼ è¿›æ¥çš„åˆ†é¡µå‚æ•°ï¼Œå°†æ’åºå¥½çš„è¯é¢˜Idåˆ†é¡µ
+					String content = topicDao.getContent(array[j]);
+					String date = topicDao.getTimeofTopic(array[j]);
+					Topic topic = new Topic();
+					topic.setTopic(content);
+					topic.setDate(date);                            //æ ¹æ®è¯é¢˜Idåˆ›å»ºè¯é¢˜
+					newTopicList.add(topic);                        //å°†åˆ›å»ºå¥½çš„è¯é¢˜æ·»åŠ åˆ°è¯é¢˜åˆ—è¡¨ä¸­      
+				}
+			}
 
-		return topicList;              //·µ»ØTopicList
+		//return null;
+		return newTopicList;                            //è¿”å›æ‰€éœ€è¦çš„é‚£ä¸€é¡µæŒ‰ç…§è¯é¢˜çƒ­åº¦æ’åºå¥½çš„è¯é¢˜åˆ—è¡¨     
 	}
 
-        //MapÅÅĞòËã·¨£¬¸ù¾İvalue½«Map½µĞòÖØĞÂÅÅĞò
-	private <String, Double extends Comparable<? super Double>> Map<String, Double> sortByValue(
+        
+	/*private <String, Double extends Comparable<? super Double>> Map<String, Double> sortByValue(
 			Map<String, Double> map) {
 		List<Map.Entry<String, Double>> list = new LinkedList<Map.Entry<String, Double>>(
 				map.entrySet());
@@ -98,13 +146,13 @@ public class HotTopicServiceImpl implements HotTopicService {
 			result.put(entry.getKey(), entry.getValue());
 		}
 		return result;
-	}
+	}*/
 
-        //ÈÕÆÚÉ¸Ñ¡Ëã·¨£¬¸ù¾İÏµÍ³Ê±¼ä²éÑ¯½üÒ»ÖÜµÄÈÕÆÚ£¬¼ì²â´«ÈëµÄÈÕÆÚÊÇ·ñÔÚ½üÒ»ÖÜÖĞ£¬ÊÇÔò·µ»ØTrue
+    //æ—¥æœŸåˆ¤æ–­æ–¹æ³•ï¼Œæ ¹æ®ç”¨æˆ·ä¼ è¿›æ¥çš„æ—¥æœŸå­—ç¬¦ä¸²ï¼Œåˆ¤æ–­æ˜¯å¦æ˜¯è¿‘ä¸€å‘¨çš„æ—¥æœŸï¼Œæ˜¯åˆ™è¿”å›Trueï¼Œå¦åˆ™è¿”å›False
 	private boolean DateTest(String date) {
-        Date newDate = new Date();      //µÃµ½ÏµÍ³Ê±¼ä
+        Date newDate = new Date();            //è¯»å–ç³»ç»Ÿæ—¶é—´
         
-        SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd");    //¹æ¶¨ÈÕÆÚ¸ñÊ½
+        SimpleDateFormat format=new SimpleDateFormat("yyyy-MM-dd");    //å®šä¹‰æ—¥æœŸæ ¼å¼
         
         Calendar calendar = Calendar.getInstance();
         calendar.setTime(newDate);
@@ -114,22 +162,195 @@ public class HotTopicServiceImpl implements HotTopicService {
         //String startDate = format.format(date1);
         //System.out.println(out1);
         calendar.add(Calendar.DATE, 7);
-        Date endDate = calendar.getTime();             //»ñÈ¡µ±Ç°ÈÕÆÚ½üÒ»ÖÜµÄÆğÊ¼ÈÕÆÚºÍ½áÊøÈÕÆÚ
+        Date endDate = calendar.getTime();                      //è·å–ç³»ç»Ÿæ—¥æœŸè¿‘ä¸€å‘¨çš„èµ·å§‹æ—¥æœŸå’Œç»“æŸæ—¥æœŸï¼Œåˆ†åˆ«ä¸ºstartDateå’ŒendDate  
         //String endDate = format.format(date2);
         
         Date dateTopic = format.parse(date,new ParsePosition(0));
         
-        if(dateTopic.after(startDate)&&dateTopic.before(endDate)){         //ÅĞ¶Ï´«ÈëµÄÈÕÆÚÊÇ·ñÔÚÖ®Ç°µÃµ½µÄÈÕÆÚ·¶Î§ÄÚ£¬ÔÚ¼´·µ»ØTrue
+        if(dateTopic.after(startDate)&&dateTopic.before(endDate)){         
         	return true;
         }
         
 		return false;
 	}
 
-	/*
-	 * public static void main(String[] args){ Date
-	 * 
-	 * }
-	 */
+	/*public static void main(String[] args){
+        HotTopicServiceImpl a = new HotTopicServiceImpl();
+		 
+		 a.HotTopic(2, 10);
+	}*/
+	
+	
+	//è‡ªå®šä¹‰æ’åºç®—æ³•ï¼Œæ ¹æ®è¯é¢˜çš„çƒ­åº¦å°†è¯é¢˜Idæ•°ç»„è¿›è¡Œé™åºæ’åˆ—
+	public static void forkJoinSort() {
+		//long beginTime = System.currentTimeMillis();
+		ForkJoinPool forkJoinPool = new ForkJoinPool();
+
+		forkJoinPool.submit(new SortTask(0, HotTopicServiceImpl.length - 1, array));
+		forkJoinPool.shutdown();
+		try {
+			forkJoinPool.awaitTermination(10000, TimeUnit.SECONDS);
+		} catch (InterruptedException e) {
+			e.printStackTrace();
+		}
+		//long endTime = System.currentTimeMillis();
+		//System.out.println("sort file:" + (endTime - beginTime) + "ms");
+	}
+
+	//é‡å†™compareæ–¹æ³•ï¼Œä½¿å…¶æ ¹æ®è¯é¢˜çš„è‡ªå®šä¹‰çƒ­åº¦è¿›è¡Œé™åºæ’åˆ—
+	@Override
+	public int compare(Object arg0, Object arg1) {
+		// TODO Auto-generated method stub
+
+		String topicId1 = (String) arg0;
+		String topicId2 = (String) arg1;
+
+		List<String> weiboIdList1 = topicDao.getAllWeibo(topicId1); 
+		List<String> weiboIdList2 = topicDao.getAllWeibo(topicId2);           //è°ƒç”¨TopicDAOä¸­çš„æ¥å£æ ¹æ®è¯é¢˜Idè·å–è¯¥è¯é¢˜å¯¹åº”çš„å¾®åšåˆ—è¡¨
+
+		double hot1 = 0.0;
+		double hot2 = 0.0;
+
+		for (int j = 0; j < weiboIdList1.size(); j++) {
+			String weiboId = weiboIdList1.get(j);             
+			String commentNumber = weiboDao.getCommentNumber(weiboId);      //è·å–è¯¥å¾®åšçš„è¯„è®ºæ•°
+			String forwordNumber = weiboDao.getForwardNumber(weiboId);      //è·å–è¯¥å¾®åšçš„è½¬å‘æ•°
+			String likeNumber = weiboDao.getLikeNumber(weiboId);            //è·å–è¯¥å¾®åšçš„ç‚¹èµæ•°
+
+			hot1 = hot1 + 0.2 * Float.parseFloat(likeNumber) + 0.4
+					* Float.parseFloat(forwordNumber) + 0.4
+					* Float.parseFloat(commentNumber);                      //è‡ªå®šä¹‰æƒé‡ï¼Œå°†è¯¥è¯é¢˜å¯¹åº”çš„æ‰€æœ‰å¾®åšçš„è‡ªå®šä¹‰çƒ­åº¦è¿›è¡Œç´¯åŠ å³æ˜¯è¯¥æ¡è¯é¢˜çš„çƒ­åº¦    
+		}
+		
+		for (int i = 0; i < weiboIdList2.size(); i++) {
+			String weiboId = weiboIdList1.get(i);             
+			String commentNumber = weiboDao.getCommentNumber(weiboId);   
+			String forwordNumber = weiboDao.getForwardNumber(weiboId);    
+			String likeNumber = weiboDao.getLikeNumber(weiboId);          
+
+			hot2 = hot2 + 0.2 * Float.parseFloat(likeNumber) + 0.4
+					* Float.parseFloat(forwordNumber) + 0.4
+					* Float.parseFloat(commentNumber);            
+		}
+		
+		/*hot1 = HotTopicServiceImpl.topicMap.get(topicId1);
+		hot2 = HotTopicServiceImpl.topicMap.get(topicId2);*/
+		
+		if (hot1 > hot2) {
+			return -1;    
+		} else if (hot1 < hot2) {
+			return 1;
+		} else {
+			return 0;                //æ ¹æ®è¯é¢˜çš„çƒ­åº¦è¿›è¡Œé™åºæ’åˆ—
+		}
+	}
+	
+	 
+}
+
+//å¤šçº¿ç¨‹æ’åº
+@SuppressWarnings("serial")
+class SortTask extends RecursiveAction {
+	
+	    @Autowired
+	    private TopicDAO topicDao;
+	    @Autowired
+	    private WeiboDAO weiboDao;
+
+	final int start;
+	final int end;
+	private int THRESHOLD = 30_0000;
+	//@Autowired
+	//private UserDAO userDao;
+	final String[] topicIdArray;
+
+	public SortTask(String[] topicIdArray) {
+
+		this.start = 0;
+		this.end = HotTopicServiceImpl.length - 1;
+		this.topicIdArray = topicIdArray;
+	}
+
+	public SortTask(int start, int end, String[] topicIdArray) {
+		this.start = start;
+		this.end = end;
+		this.topicIdArray = topicIdArray;
+	}
+
+	@Override
+	protected void compute() {
+		if (end - start < THRESHOLD) {
+			
+			HotTopicServiceImpl top = new HotTopicServiceImpl();
+			Arrays.sort(topicIdArray, start, end + 1,top);
+
+		} else {
+			int pivot = partition(start, end, topicIdArray);
+			SortTask left = null;
+			SortTask right = null;
+			if (start < pivot - 1) {
+				left = new SortTask(start, pivot - 1, topicIdArray);
+			}
+			if (pivot + 1 < end) {
+				right = new SortTask(pivot + 1, end, topicIdArray);
+			}
+			if (left != null) {
+				left.fork();
+			}
+			if (right != null) {
+				right.fork();
+			}
+		}
+	}
+
+	private int partition(int start, int end, String[] topicIdArray) {
+		int i = start;
+		int j = end;
+		String topicId = null;
+		topicId = topicIdArray[i];
+		while (i < j) {
+			while (i < j && getValue(topicIdArray[j])<getValue(topicId)){//baseContentArray[j].getCommentNumber() + baseContentArray[j].getLike() > user.getCommentNumber()+ user.getLike()) {
+				j--;
+			}
+			if (i < j) {
+				topicIdArray[i++] = topicIdArray[j];
+			}
+			while (i < j &&getValue(topicIdArray[i])>getValue(topicId)){// baseContentArray[i].getCommentNumber() + baseContentArray[i].getLike() < user.getCommentNumber()+ user.getLike()) {
+				i++;
+			}
+			if (i < j) {
+				topicIdArray[j--] = topicIdArray[i];
+			}
+		}
+		topicIdArray[i] = topicId;
+		return i;
+	}
+	
+	//è·å–è¯¥æ¡è¯é¢˜çš„çƒ­åº¦
+	public double getValue(String topicId){
+		List<String> weiboIdList = topicDao.getAllWeibo(topicId); 
+		
+		
+
+		double hot = 0.0;
+
+		for (int j = 0; j < weiboIdList.size(); j++) {
+			String weiboId = weiboIdList.get(j);             
+			String commentNumber = weiboDao.getCommentNumber(weiboId);   
+			String forwordNumber = weiboDao.getForwardNumber(weiboId);    
+			String likeNumber = weiboDao.getLikeNumber(weiboId);          
+
+			hot = hot + 0.2 * Float.parseFloat(likeNumber) + 0.4
+					* Float.parseFloat(forwordNumber) + 0.4
+					* Float.parseFloat(commentNumber);            
+		}
+		
+		//Random rand =  new Random();
+		
+		//return hot;
+		//return HotTopicServiceImpl.topicMap.get(topicId);
+		
+		return hot;
+	}
 
 }
