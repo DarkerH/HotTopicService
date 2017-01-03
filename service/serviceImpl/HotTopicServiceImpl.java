@@ -1,4 +1,4 @@
-﻿package cn.edu.bjtu.weibo.impl;
+package cn.edu.bjtu.weibo.impl;
 
 import java.util.Date;
 import java.text.DateFormat;
